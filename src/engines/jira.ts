@@ -1,3 +1,5 @@
+// src/engines/jira.ts
+
 import axios, { AxiosInstance } from "axios";
 
 import { escapeQuotes, getUnixTime } from "../util";
@@ -35,18 +37,28 @@ const engine: Engine = {
           summary: string;
           /** e.g. "2017-11-20T11:50:25.653-0500" */
           updated: string;
+          comment?: { comments: { body: string }[] };
         };
         key: string;
-        renderedFields: { description: string };
+        renderedFields: {
+          description: string;
+          comment?: {
+            comments: { author: { displayName: string }; body: string }[];
+          };
+        };
       }[];
     } = (
-      await client.get("/search", {
-        params: { expand: "renderedFields", jql: `text ~ "${sanitize(q)}"` },
+      await client.get('/search', {
+        params: {
+          expand: 'renderedFields',
+          fields: 'summary,updated,description,comment',
+          jql: `(comment ~ "${sanitize(q)}" OR text ~ "${sanitize(q)}")`,
+        },
       })
     ).data;
     return data.issues.map(issue => ({
       modified: getUnixTime(issue.fields.updated),
-      snippet: issue.renderedFields.description,
+      snippet: `${issue.renderedFields.description}<br>📝Comments:<br>${ issue.renderedFields.comment ? issue.renderedFields.comment.comments?.map(c => `<br>🗨️${c.author.displayName}: ${c.body}`).join("\n") : "No comments" }`,
       title: `${issue.key}: ${issue.fields.summary}`,
       url: `${origin}/browse/${issue.key}`,
     }));
