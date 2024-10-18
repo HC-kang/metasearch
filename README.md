@@ -1,4 +1,9 @@
-# Metasearch
+# 메타-써치 with JIRA Comment Search
+
+> 🔔 UI는 조금 구리지만, JIRA의 Comment 검색 기능을 추가했습니다.
+
+업무적인 필요로 인해 급조했지만, 나름 쓸만하긴 합니다.  
+PR 및 이슈(~~지적~~) 환영합니다!
 
 Metasearch is a tool for searching many other tools in parallel:
 
