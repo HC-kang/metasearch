@@ -63,14 +63,11 @@ const engine: Engine = {
 
     return data.issues.map(issue => ({
       modified: getUnixTime(issue.fields.updated),
-      snippet:
-        includeComments && issue.renderedFields.comment
-          ? `${
-              issue.renderedFields.description
-            }<br>📝Comments:<br>${issue.renderedFields.comment.comments
-              ?.map((c) => `<br>🗨️${c.author.displayName}: ${c.body}`)
-              .join('\n')}`
-          : issue.renderedFields.description,
+      snippet: issue.renderedFields.description,
+      comments: includeComments ? issue.renderedFields.comment?.comments.map(c => ({
+        author: c.author.displayName,
+        body: c.body
+      })) : undefined,
       title: `${issue.key}: ${issue.fields.summary}`,
       url: `${origin}/browse/${issue.key}`,
     }));

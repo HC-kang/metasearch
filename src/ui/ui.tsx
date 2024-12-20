@@ -102,7 +102,7 @@ const Settings = ({
       title='Toggle JIRA comments'
       style={{ marginLeft: '10px' }}
     >
-      {jiraIncludeComments ? '✖️ Hide Comments' : '✔️ Show Comments'}
+      {jiraIncludeComments ? 'Hide Comments' : 'Show Comments'}
     </a>
   </div>
 );
@@ -189,70 +189,120 @@ const Results = ({
   onToggle: (engineId: string) => void;
   resultGroups: ResultGroup[];
   sortMode: SortMode;
-}) => (
-  <div className="results">
-    {resultGroups
-      .filter(rg => rg.results.length)
-      .map(({ elapsedMs, engineId, results }) => {
-        const showResults = !hiddenEngines.includes(engineId);
-        return (
-          <div
-            className="result-group"
-            data-engine-results={engineId}
-            key={engineId}
-          >
-            <h2
-              className={showResults ? undefined : "hide-results"}
-              onClick={() => onToggle(engineId)}
-              title="Toggle results"
+}) => {
+  const [commentVisibility, setCommentVisibility] = useState<Record<string, boolean>>({});
+
+  const renderSnippet = (result: Result, engineId: string) => {
+    if (!result.snippet) return null;
+
+    const isVisible = commentVisibility[result.title] ?? false;
+
+    return (
+      <div className="snippet">
+        <div dangerouslySetInnerHTML={{ __html: result.snippet }} />
+        {engineId === 'jira' && result.comments && (
+          <div className="comments-section">
+            <button 
+              className="comments-header"
+              onClick={() => setCommentVisibility(prev => ({
+                ...prev,
+                [result.title]: !prev[result.title]
+              }))}
+              style={{ 
+                cursor: 'pointer',
+                border: 'none',
+                background: 'none',
+                padding: '8px',
+                margin: '8px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                color: 'inherit',
+                fontSize: 'inherit',
+                fontWeight: 'bold'
+              }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 -256 1792 1792"
-              >
-                <path
-                  d="M1426.44 407.864q0 26-19 45l-448 448q-19 19-45 19t-45-19l-448-448q-19-19-19-45t19-45q19-19 45-19h896q26 0 45 19t19 45z"
-                  fill="currentColor"
-                />
-              </svg>
-              {ENGINES[engineId].name}
-            </h2>
-            <span className="stats">
-              {results.length} result{results.length === 1 ? "" : "s"} (
-              {(elapsedMs / 1000).toFixed(2)} seconds)
-            </span>
-            {showResults
-              ? results.sort(SORT_MODES[sortMode].sortFn).map((result, i) => (
-                  <div className="result" key={i}>
-                    <div>
-                      <a
-                        className="title"
-                        dangerouslySetInnerHTML={{ __html: result.title }}
-                        href={result.url}
-                      />
-                      {result.modified ? (
-                        <span
-                          className="modified"
-                          title={formatDate(result.modified)}
-                        >
-                          {window.timeago.format(result.modified * 1000)}
-                        </span>
-                      ) : null}
-                    </div>
-                    {result.snippet ? (
-                      <div
-                        className="snippet"
-                        dangerouslySetInnerHTML={{ __html: result.snippet }}
-                      />
-                    ) : null}
+              <span>{isVisible ? '📚' : '📖'}</span>
+              <span>Comments ({result.comments.length})</span>
+              <span style={{ fontSize: '0.8em' }}>{isVisible ? '▼' : '▶'}</span>
+            </button>
+            {isVisible && (
+              <div className="comments-list">
+                {result.comments.map((comment, index) => (
+                  <div key={index} className="comment">
+                    <span className="comment-author">{comment.author}</span>
+                    <div className="comment-body" dangerouslySetInnerHTML={{ __html: comment.body }} />
                   </div>
-                ))
-              : null}
+                ))}
+              </div>
+            )}
           </div>
-        );
-      })}
-  </div>
-);
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="results">
+      {resultGroups
+        .filter(rg => rg.results.length)
+        .map(({ elapsedMs, engineId, results }) => {
+          const showResults = !hiddenEngines.includes(engineId);
+          return (
+            <div
+              className="result-group"
+              data-engine-results={engineId}
+              key={engineId}
+            >
+              <h2
+                className={showResults ? undefined : "hide-results"}
+                onClick={() => onToggle(engineId)}
+                title="Toggle results"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 -256 1792 1792"
+                >
+                  <path
+                    d="M1426.44 407.864q0 26-19 45l-448 448q-19 19-45 19t-45-19l-448-448q-19-19-19-45t19-45q19-19 45-19h896q26 0 45 19t19 45z"
+                    fill="currentColor"
+                  />
+                </svg>
+                {ENGINES[engineId].name}
+              </h2>
+              <span className="stats">
+                {results.length} result{results.length === 1 ? "" : "s"} (
+                {(elapsedMs / 1000).toFixed(2)} seconds)
+              </span>
+              {showResults
+                ? results.sort(SORT_MODES[sortMode].sortFn).map((result, i) => (
+                    <div className="result" key={i}>
+                      <div>
+                        <a 
+                          href={result.url}
+                          className="title"
+                        >
+                          <span dangerouslySetInnerHTML={{ __html: result.title }} />
+                        </a>
+                        {result.modified ? (
+                          <span
+                            className="modified"
+                            title={formatDate(result.modified)}
+                          >
+                            {window.timeago.format(result.modified * 1000)}
+                          </span>
+                        ) : null}
+                      </div>
+                      {renderSnippet(result, engineId)}
+                    </div>
+                  ))
+                : null}
+            </div>
+          );
+        })}
+    </div>
+  );
+};
 
 const memoize = <F extends Function>(fn: F) => {
   let cache: Record<string, any> = {};

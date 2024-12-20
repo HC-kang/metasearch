@@ -17,6 +17,10 @@ interface Result {
   snippet?: string;
   title: string;
   url: string;
+  comments?: Array<{
+    author: string;
+    body: string;
+  }>;
 }
 
 interface Window {
