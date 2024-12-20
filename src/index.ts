@@ -135,7 +135,7 @@ ${JSON.stringify(data)}`);
   // Declare search route for individual engines
   app.get("/api/search", async (req, res) => {
     // Check that desired engine exists
-    const { engine: engineId, q } = req.query as Record<string, string>;
+    const { engine: engineId, q, includeComments } = req.query as Record<string, string>;
     const engine = engineMap[engineId];
     if (!engine) {
       res.status(400);
@@ -146,7 +146,7 @@ ${JSON.stringify(data)}`);
     // Query engine
     try {
       res.json(
-        (await engine.search(q)).map(result => ({
+        (await engine.search(q, includeComments == 'true')).map(result => ({
           ...result,
           snippet: result.snippet
             ? sanitizeHtml(

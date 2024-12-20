@@ -70,12 +70,16 @@ const Settings = ({
   enableSorting,
   onSort,
   onToggleTheme,
+  onToggleJiraComments,
   sortMode,
+  jiraIncludeComments,
 }: {
   enableSorting: boolean;
   onSort: (sort: SortMode) => void;
   onToggleTheme: () => void;
+  onToggleJiraComments: () => void;
   sortMode: SortMode;
+  jiraIncludeComments: boolean;
 }) => (
   <div className="sorter">
     {enableSorting
@@ -92,6 +96,14 @@ const Settings = ({
     <a href="javascript:;" onClick={onToggleTheme} title="Toggle dark theme">
       <img src="/theme.png" />
     </a>
+    <a
+      href='javascript:;'
+      onClick={onToggleJiraComments}
+      title='Toggle JIRA comments'
+      style={{ marginLeft: '10px' }}
+    >
+      {jiraIncludeComments ? '✖️ Hide Comments' : '✔️ Show Comments'}
+    </a>
   </div>
 );
 
@@ -107,8 +119,9 @@ const Sidebar = ({
       {Object.values(ENGINES)
         .sort((a, b) => (a.name > b.name ? 1 : -1))
         .map(engine => {
-          const numResults = resultGroups.find(rg => rg.engineId === engine.id)
-            ?.results.length;
+          const numResults = resultGroups.find(
+            (rg) => rg.engineId === engine.id
+          )?.results.length;
           return (
             <li
               className={
@@ -253,67 +266,19 @@ const memoize = <F extends Function>(fn: F) => {
 };
 
 const getResults = memoize(
-  async (id: string, q: string): Promise<Result[]> =>
-    await (await fetch(`/api/search?${querify({ engine: id, q })}`)).json(),
+  async (id: string, q: string, includeComments?: boolean): Promise<Result[]> =>
+    await (
+      await fetch(
+        `/api/search?${querify({
+          engine: id,
+          q,
+          ...(id === 'jira' && {
+            includeComments: includeComments ? 'true' : 'false',
+          }),
+        })}`
+      )
+    ).json()
 );
-
-const handleSearch = async (
-  dispatch: React.Dispatch<ResultGroup | undefined>,
-  q: string,
-  createHistoryEntry: boolean,
-) => {
-  // Normalize and validate query
-  q = q.trim().replace(/\s+/, " ");
-  if (!/\S/.test(q)) {
-    return;
-  }
-
-  // Update browser URL and tab title
-  const path = `/?q=${encodeURIComponent(q)}`;
-  createHistoryEntry
-    ? window.history.pushState(null, "", path)
-    : window.history.replaceState(null, "", path);
-  TRACKING_ID && window.gtag?.("config", TRACKING_ID, { page_path: path });
-  document.title = `${q} - Metasearch`;
-
-  // Clear results
-  dispatch(undefined);
-
-  // Get results
-  const highlightRegex = new RegExp(
-    q.replace(/\W|_/g, "").split("").join("(\\W|_)*"),
-    "gi",
-  );
-  await Promise.all(
-    Object.values(ENGINES).map(async engine => {
-      // Fetch results
-      const start = Date.now();
-      const results = await getResults(engine.id, q);
-
-      // Abort if no longer viewing this query
-      if (getUrlQ() !== q) {
-        return;
-      }
-
-      // Highlight query
-      for (let i = 0; i < results.length; ++i) {
-        const result = results[i];
-        result.relevance = i;
-        for (const property of ["title", "snippet"] as const) {
-          const value = result[property];
-          if (!value) {
-            continue;
-          }
-          const node = new DOMParser().parseFromString(value, "text/html").body;
-          new window.Mark(node).markRegExp(highlightRegex);
-          result[property] = node.innerHTML;
-        }
-      }
-
-      dispatch({ elapsedMs: Date.now() - start, engineId: engine.id, results });
-    }),
-  );
-};
 
 /** Helper for interacting with localStorage */
 const STORAGE_MANAGER = (() => {
@@ -321,6 +286,7 @@ const STORAGE_MANAGER = (() => {
     dark: boolean;
     hiddenEngines: string[];
     sortMode: SortMode;
+    jiraIncludeComments: boolean;
   }>;
   let cachedData: Data;
   try {
@@ -357,12 +323,72 @@ const App = () => {
     [],
   );
 
+  const handleSearch = async (q: string, createHistoryEntry: boolean) => {
+    q = q.trim().replace(/\s+/, ' ');
+    if (!/\S/.test(q)) {
+      return;
+    }
+
+    const path = `/?q=${encodeURIComponent(q)}`;
+    createHistoryEntry
+      ? window.history.pushState(null, '', path)
+      : window.history.replaceState(null, '', path);
+    TRACKING_ID && window.gtag?.('config', TRACKING_ID, { page_path: path });
+    document.title = `${q} - Metasearch`;
+
+    dispatch(undefined);
+
+    const highlightRegex = new RegExp(
+      q.replace(/\W|_/g, '').split('').join('(\\W|_)*'),
+      'gi'
+    );
+
+    await Promise.all(
+      Object.values(ENGINES).map(async (engine) => {
+        const start = Date.now();
+        const results = await getResults(
+          engine.id,
+          q,
+          engine.id === 'jira'
+            ? localData.jiraIncludeComments ?? false
+            : undefined
+        );
+
+        if (getUrlQ() !== q) {
+          return;
+        }
+
+        for (let i = 0; i < results.length; ++i) {
+          const result = results[i];
+          result.relevance = i;
+          for (const property of ['title', 'snippet'] as const) {
+            const value = result[property];
+            if (!value) {
+              continue;
+            }
+            const node = new DOMParser().parseFromString(
+              value,
+              'text/html'
+            ).body;
+            new window.Mark(node).markRegExp(highlightRegex);
+            result[property] = node.innerHTML;
+          }
+        }
+
+        dispatch({
+          elapsedMs: Date.now() - start,
+          engineId: engine.id,
+          results,
+        });
+      })
+    );
+  };
+
   useEffect(() => {
-    // Run query on initial page load and on HTML5 history change
     const runUrlQ = () => {
       const urlQ = getUrlQ();
       setQ(urlQ);
-      handleSearch(dispatch, urlQ, false);
+      handleSearch(urlQ, false);
     };
     runUrlQ();
     window.addEventListener("popstate", runUrlQ);
@@ -371,6 +397,12 @@ const App = () => {
   useEffect(() => {
     STORAGE_MANAGER.set(localData);
   }, [localData]);
+
+  useEffect(() => {
+    if (q) {
+      handleSearch(q, false);
+    }
+  }, [localData.jiraIncludeComments]);
 
   const sortMode: SortMode = localData.sortMode || "best";
   return (
@@ -387,7 +419,7 @@ const App = () => {
       </div>
       <Header
         onChange={e => setQ(e.target.value)}
-        onSearch={q => handleSearch(dispatch, q, !!getUrlQ().trim())}
+        onSearch={q => handleSearch(q, !!getUrlQ().trim())}
         q={q}
       />
       <Settings
@@ -396,7 +428,14 @@ const App = () => {
         onToggleTheme={() =>
           setLocalData({ ...localData, dark: !localData.dark })
         }
+        onToggleJiraComments={() =>
+          setLocalData({
+            ...localData,
+            jiraIncludeComments: !(localData.jiraIncludeComments ?? false),
+          })
+        }
         sortMode={sortMode}
+        jiraIncludeComments={localData.jiraIncludeComments ?? false}
       />
       <Sidebar
         hiddenEngines={localData.hiddenEngines || []}

@@ -6,7 +6,7 @@ interface Engine {
   init: (options: object) => void | Promise<void>;
   isSnippetLarge?: boolean;
   name: string;
-  search: (q: string) => Promise<Result[]>;
+  search: (q: string, includeComments?: boolean) => Promise<Result[]>;
 }
 
 interface Result {

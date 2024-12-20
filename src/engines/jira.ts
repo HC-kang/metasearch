@@ -24,13 +24,17 @@ const engine: Engine = {
   },
   isSnippetLarge: true,
   name: "Jira",
-  search: async q => {
+  search: async (q: string, includeComments: boolean = false) => {
     if (!(client && origin)) {
       throw Error("Engine not initialized");
     }
 
     // TODO: Use API v3?
     // https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#searching-for-issues-examples
+    const jql = includeComments
+      ? `(comment ~ "${sanitize(q)}" OR text ~ "${sanitize(q)}")`
+      : `text ~ "${sanitize(q)}"`;
+
     const data: {
       issues: {
         fields: {
@@ -52,13 +56,21 @@ const engine: Engine = {
         params: {
           expand: 'renderedFields',
           fields: 'summary,updated,description,comment',
-          jql: `(comment ~ "${sanitize(q)}" OR text ~ "${sanitize(q)}")`,
+          jql,
         },
       })
     ).data;
+
     return data.issues.map(issue => ({
       modified: getUnixTime(issue.fields.updated),
-      snippet: `${issue.renderedFields.description}<br>📝Comments:<br>${ issue.renderedFields.comment ? issue.renderedFields.comment.comments?.map(c => `<br>🗨️${c.author.displayName}: ${c.body}`).join("\n") : "No comments" }`,
+      snippet:
+        includeComments && issue.renderedFields.comment
+          ? `${
+              issue.renderedFields.description
+            }<br>📝Comments:<br>${issue.renderedFields.comment.comments
+              ?.map((c) => `<br>🗨️${c.author.displayName}: ${c.body}`)
+              .join('\n')}`
+          : issue.renderedFields.description,
       title: `${issue.key}: ${issue.fields.summary}`,
       url: `${origin}/browse/${issue.key}`,
     }));
