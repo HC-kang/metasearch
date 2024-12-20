@@ -57,6 +57,7 @@ const engine: Engine = {
           expand: 'renderedFields',
           fields: 'summary,updated,description,comment',
           jql,
+          maxResults: 100,
         },
       })
     ).data;
