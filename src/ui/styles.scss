@@ -102,34 +102,6 @@ hr {
 ul {
   list-style: none;
   padding: 0;
-  margin: 0.5rem 0;
-
-  li {
-    margin: 0.3rem 0;
-    line-height: 1.5;
-    
-    b {
-      color: var(--primary-text-color);
-      font-weight: 700;
-    }
-
-    font[color="#ff991f"] {
-      color: #ff991f;
-    }
-  }
-
-  // 기본 bullet point 스타일
-  &:not(.engine-list):not(.result-list) li {
-    position: relative;
-    padding-left: 1.2rem;
-
-    &::before {
-      content: "•";
-      position: absolute;
-      left: 0.3rem;
-      color: var(--secondary-text-color);
-    }
-  }
 }
 
 a {
@@ -290,10 +262,71 @@ mark {
   border-bottom: 2px solid var(--border-color);
   margin-bottom: calc(var(--padding-standard) / 2);
   padding-bottom: calc(var(--padding-standard) / 2);
-}
 
-.result-group:last-child {
-  border-bottom: 0;
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  // 결과 그룹 내부의 테이블 스타일
+  table {
+    border-collapse: collapse;
+    margin: 1rem 0;
+    width: 100%;
+    
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 0.75rem;
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--sidebar-hover-color);
+      font-weight: bold;
+    }
+
+    tr:nth-child(even) {
+      background-color: var(--bg-color);
+    }
+
+    tr:nth-child(odd) {
+      background-color: var(--sidebar-hover-color);
+      opacity: 0.7;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  }
+
+  // 결과 그룹 내부의 리스트 추가 스타일
+  ul:not(.engine-list):not(.result-list) {
+    margin: 0.5rem 0;
+
+    li {
+      margin: 0.3rem 0;
+      line-height: 1.5;
+      position: relative;
+      padding-left: 1.2rem;
+      
+      b {
+        color: var(--primary-text-color);
+        font-weight: 700;
+      }
+
+      font[color="#ff991f"] {
+        color: #ff991f;
+      }
+
+      &::before {
+        content: "•";
+        position: absolute;
+        left: 0.3rem;
+        color: var(--secondary-text-color);
+      }
+    }
+  }
 }
 
 h2 {
@@ -392,38 +425,6 @@ h2 {
   grid-area: 3 / 1 / 4 / 2;
   padding: var(--padding-standard)
     calc(var(--padding-standard) + var(--engine-padding-left));
-}
-
-table {
-  border-collapse: collapse;
-  margin: 1rem 0;
-  width: 100%;
-  
-  th, td {
-    border: 1px solid var(--border-color);
-    padding: 0.75rem;
-    text-align: left;
-  }
-
-  th {
-    background-color: var(--sidebar-hover-color);
-    font-weight: bold;
-  }
-
-  tr:nth-child(even) {
-    background-color: var(--bg-color);
-  }
-
-  tr:nth-child(odd) {
-    background-color: var(--sidebar-hover-color);
-    opacity: 0.75;
-  }
-
-  pre {
-    margin: 0;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
 }
 
 // 코멘트 스타일
