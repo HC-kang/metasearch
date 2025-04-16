@@ -102,6 +102,34 @@ hr {
 ul {
   list-style: none;
   padding: 0;
+  margin: 0.5rem 0;
+
+  li {
+    margin: 0.3rem 0;
+    line-height: 1.5;
+    
+    b {
+      color: var(--primary-text-color);
+      font-weight: 700;
+    }
+
+    font[color="#ff991f"] {
+      color: #ff991f;
+    }
+  }
+
+  // 기본 bullet point 스타일
+  &:not(.engine-list):not(.result-list) li {
+    position: relative;
+    padding-left: 1.2rem;
+
+    &::before {
+      content: "•";
+      position: absolute;
+      left: 0.3rem;
+      color: var(--secondary-text-color);
+    }
+  }
 }
 
 a {
@@ -327,6 +355,30 @@ h2 {
 
     margin: 5px 10px 0 0;
     max-height: 100px;
+    
+    // Jira 이미지 대체 스타일
+    &[src*="/rest/api/3/attachment"] {
+      color: transparent;
+      font-size: 0;
+      background-color: var(--border-color);
+      border: 1px dashed var(--secondary-text-color);
+      display: inline-block;
+      width: 100px;
+      height: 100px;
+      position: relative;
+      background-image: none;
+      
+      &::after {
+        content: "Jira Image";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--secondary-text-color);
+        font-size: 0.8rem;
+        text-align: center;
+      }
+    }
   }
 
   pre {
@@ -340,4 +392,112 @@ h2 {
   grid-area: 3 / 1 / 4 / 2;
   padding: var(--padding-standard)
     calc(var(--padding-standard) + var(--engine-padding-left));
+}
+
+table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+  
+  th, td {
+    border: 1px solid var(--border-color);
+    padding: 0.75rem;
+    text-align: left;
+  }
+
+  th {
+    background-color: var(--sidebar-hover-color);
+    font-weight: bold;
+  }
+
+  tr:nth-child(even) {
+    background-color: var(--bg-color);
+  }
+
+  tr:nth-child(odd) {
+    background-color: var(--sidebar-hover-color);
+    opacity: 0.75;
+  }
+
+  pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+}
+
+// 코멘트 스타일
+.comments-list {
+  margin: 1rem 0;
+  
+  .comment {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  .comment-author {
+    color: var(--blue);
+    font-weight: 700;
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+  
+  .comment-body {
+    color: var(--primary-text-color);
+    line-height: 1.6;
+    
+    p {
+      margin: 0.8rem 0;
+      
+      &:first-child {
+        margin-top: 0;
+      }
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
+    .error {
+      color: #ff5630;
+      font-weight: 700;
+    }
+    
+    .user-hover {
+      color: var(--blue);
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+    
+    // Confluence 테이블 스타일 개선
+    .table-wrap {
+      margin: 1rem 0;
+      overflow-x: auto;
+      
+      table {
+        margin: 0;
+      }
+      
+      .confluenceTd {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        min-width: 100px;
+        
+        &:first-child {
+          white-space: nowrap;
+        }
+      }
+    }
+  }
 }
