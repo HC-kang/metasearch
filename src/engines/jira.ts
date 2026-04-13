@@ -10,7 +10,7 @@ let origin: string | undefined;
 // https://confluence.atlassian.com/jiracoreserver073/search-syntax-for-text-fields-861257223.html#Searchsyntaxfortextfields-escapingSpecialcharacters
 const sanitize = (s: string) =>
   escapeQuotes(s.replace(/[+&|!(){}[\]^~*?\\:]/g, ""))
-    .replace(/\s+/, " ")
+    .replace(/\s+/g, " ")
     .trim();
 
 const engine: Engine = {
@@ -18,7 +18,7 @@ const engine: Engine = {
   init: (options: { origin: string; token: string; user: string }) => {
     client = axios.create({
       auth: { password: options.token, username: options.user },
-      baseURL: `${options.origin}/rest/api/2`,
+      baseURL: `${options.origin}/rest/api/3`,
     });
     origin = options.origin;
   },
@@ -29,11 +29,16 @@ const engine: Engine = {
       throw Error("Engine not initialized");
     }
 
+    const sanitizedQ = sanitize(q);
+    if (!sanitizedQ) {
+      return [];
+    }
+
     // TODO: Use API v3?
     // https://developer.atlassian.com/server/jira/platform/jira-rest-api-examples/#searching-for-issues-examples
     const jql = includeComments
-      ? `(comment ~ "${sanitize(q)}" OR text ~ "${sanitize(q)}")`
-      : `text ~ "${sanitize(q)}"`;
+      ? `(comment ~ "${sanitizedQ}" OR text ~ "${sanitizedQ}")`
+      : `text ~ "${sanitizedQ}"`;
 
     const data: {
       issues: {
@@ -52,10 +57,12 @@ const engine: Engine = {
         };
       }[];
     } = (
-      await client.get('/search', {
+      await client.get('/search/jql', {
         params: {
           expand: 'renderedFields',
-          fields: 'summary,updated,description,comment',
+          fields: includeComments
+            ? 'summary,updated,description,comment'
+            : 'summary,updated,description',
           jql,
           maxResults: 100,
         },

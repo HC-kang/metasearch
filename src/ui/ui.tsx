@@ -10,6 +10,9 @@ interface ResultGroup {
 }
 
 const { ENGINES, FOOTER, TRACKING_ID } = window.metasearch;
+const HAS_JIRA_ENGINE = Boolean(ENGINES.jira);
+const JIRA_SNIPPET_COLLAPSE_MIN_LENGTH = 900;
+const SORT_MODE_IDS: SortMode[] = ["best", "recent", "az"];
 
 /** Converts an object to a query string that includes a cache-busting param */
 const querify = (params: Record<string, string> = {}) =>
@@ -83,11 +86,11 @@ const Settings = ({
 }) => (
   <div className="sorter">
     {enableSorting
-      ? ["best", "recent", "az"].map((id: SortMode) =>
+      ? SORT_MODE_IDS.map(id =>
           sortMode === id ? (
-            <span>{SORT_MODES[id].name}</span>
+            <span key={id}>{SORT_MODES[id].name}</span>
           ) : (
-            <a href="javascript:;" onClick={() => onSort(id)}>
+            <a href="javascript:;" key={id} onClick={() => onSort(id)}>
               {SORT_MODES[id].name}
             </a>
           ),
@@ -96,14 +99,16 @@ const Settings = ({
     <a href="javascript:;" onClick={onToggleTheme} title="Toggle dark theme">
       <img src="/theme.png" />
     </a>
-    <a
-      href='javascript:;'
-      onClick={onToggleJiraComments}
-      title='Toggle JIRA comments'
-      style={{ marginLeft: '10px' }}
-    >
-      {jiraIncludeComments ? 'Hide Comments' : 'Show Comments'}
-    </a>
+    {HAS_JIRA_ENGINE ? (
+      <a
+        className="jira-comments-toggle"
+        href="javascript:;"
+        onClick={onToggleJiraComments}
+        title="Toggle JIRA comments"
+      >
+        {jiraIncludeComments ? "Hide Comments" : "Show Comments"}
+      </a>
+    ) : null}
   </div>
 );
 
@@ -191,42 +196,59 @@ const Results = ({
   sortMode: SortMode;
 }) => {
   const [commentVisibility, setCommentVisibility] = useState<Record<string, boolean>>({});
+  const [snippetVisibility, setSnippetVisibility] = useState<Record<string, boolean>>({});
 
   const renderSnippet = (result: Result, engineId: string) => {
     if (!result.snippet) return null;
 
-    const isVisible = commentVisibility[result.title] ?? false;
+    const resultKey = result.url;
+    const shouldCollapseSnippet =
+      engineId === "jira" &&
+      result.snippet.length > JIRA_SNIPPET_COLLAPSE_MIN_LENGTH;
+    const isSnippetExpanded = snippetVisibility[resultKey] ?? false;
+    const isCommentsVisible = commentVisibility[resultKey] ?? false;
 
     return (
       <div className="snippet">
-        <div dangerouslySetInnerHTML={{ __html: result.snippet }} />
-        {engineId === 'jira' && result.comments && (
+        <div
+          className={`snippet-body${
+            shouldCollapseSnippet && !isSnippetExpanded ? " collapsed" : ""
+          }`}
+          dangerouslySetInnerHTML={{ __html: result.snippet }}
+        />
+        {shouldCollapseSnippet ? (
+          <button
+            className="snippet-toggle"
+            type="button"
+            onClick={() => setSnippetVisibility(prev => ({
+              ...prev,
+              [resultKey]: !prev[resultKey],
+            }))}
+          >
+            <span>
+              {isSnippetExpanded ? "Hide Description" : "Show Description"}
+            </span>
+            <span className="collapse-toggle-icon">
+              {isSnippetExpanded ? "▼" : "▶"}
+            </span>
+          </button>
+        ) : null}
+        {engineId === "jira" && result.comments?.length ? (
           <div className="comments-section">
-            <button 
+            <button
               className="comments-header"
+              type="button"
               onClick={() => setCommentVisibility(prev => ({
                 ...prev,
-                [result.title]: !prev[result.title]
+                [resultKey]: !prev[resultKey],
               }))}
-              style={{ 
-                cursor: 'pointer',
-                border: 'none',
-                background: 'none',
-                padding: '8px',
-                margin: '8px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: 'inherit',
-                fontSize: 'inherit',
-                fontWeight: 'bold'
-              }}
             >
-              <span>{isVisible ? '📚' : '📖'}</span>
               <span>Comments ({result.comments.length})</span>
-              <span style={{ fontSize: '0.8em' }}>{isVisible ? '▼' : '▶'}</span>
+              <span className="collapse-toggle-icon">
+                {isCommentsVisible ? "▼" : "▶"}
+              </span>
             </button>
-            {isVisible && (
+            {isCommentsVisible && (
               <div className="comments-list">
                 {result.comments.map((comment, index) => (
                   <div key={index} className="comment">
@@ -237,7 +259,7 @@ const Results = ({
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </div>
     );
   };
@@ -275,7 +297,7 @@ const Results = ({
                 {(elapsedMs / 1000).toFixed(2)} seconds)
               </span>
               {showResults
-                ? results.sort(SORT_MODES[sortMode].sortFn).map((result, i) => (
+                ? results.slice().sort(SORT_MODES[sortMode].sortFn).map((result, i) => (
                     <div className="result" key={i}>
                       <div>
                         <a 
@@ -442,6 +464,7 @@ const App = () => {
     };
     runUrlQ();
     window.addEventListener("popstate", runUrlQ);
+    return () => window.removeEventListener("popstate", runUrlQ);
   }, []);
 
   useEffect(() => {
@@ -449,7 +472,7 @@ const App = () => {
   }, [localData]);
 
   useEffect(() => {
-    if (q) {
+    if (HAS_JIRA_ENGINE && q) {
       handleSearch(q, false);
     }
   }, [localData.jiraIncludeComments]);

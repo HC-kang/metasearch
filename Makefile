@@ -36,7 +36,7 @@ oauth_microsoft: _ts
 # Install NPM dependencies and compile TypeScript
 .PHONY: _ts
 _ts:
-	echo 'Installing NPM dependencies...'
-	npm ci
+	echo 'Installing NPM dependencies if needed...'
+	test -d node_modules || npm ci
 	echo 'Compiling TypeScript...'
 	NODE_OPTIONS=--max_old_space_size=4096 node_modules/.bin/tsc
